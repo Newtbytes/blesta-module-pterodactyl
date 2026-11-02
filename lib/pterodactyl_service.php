@@ -86,7 +86,6 @@ class PterodactylService
             'name' => $vars['server_name'],
             'description' => $vars['server_description'],
             'user' => $pterodactylUser->attributes->id,
-            'nest' => $package->meta->nest_id,
             'egg' => $package->meta->egg_id,
             'pack' => $package->meta->pack_id,
             'docker_image' => !empty($package->meta->image)
@@ -112,7 +111,7 @@ class PterodactylService
                 'dedicated_ip' => !empty($package->meta->dedicated_ip) ? $package->meta->dedicated_ip : false,
                 'port_range' => explode(',', $package->meta->port_range),
             ],
-            'environment' =>  $this->getEnvironmentVariables($vars, $package, $pterodactylEgg),
+            'environment' => $this->getEnvironmentVariables($vars, $package, $pterodactylEgg),
             'start_on_completion' => true,
         ];
     }
@@ -329,7 +328,7 @@ class PterodactylService
                     $fields->fieldText(
                         $key,
                         ($vars->{$key} ?? ($package->meta->{$key} ?? $envVariable->attributes->default_value
-                            )
+                        )
                         ),
                         ['id' => $key]
                     )
@@ -343,19 +342,17 @@ class PterodactylService
         }
 
         $egg_id = $package->configurable_options['egg_id'] ?? 0;
-        $nest_id = $package->configurable_options['nest_id'] ?? 0;
         $location_id = $package->configurable_options['location_id'] ?? 0;
-        // Set js to refetch options when the nest or egg is changed
+        // Set js to refetch options when the egg or location is changed
         $fields->setHtml("
             <script type=\"text/javascript\">
-                // Re-fetch module options to pull in eggs and egg variables
-                // when a nest or egg respectively is selected.
+                // Re-fetch module options to pull in egg variables
+                // when an egg is selected.
                 // Track the watched fields globally so a re-render can update them,
                 // and guard against rebinding so duplicate handlers aren't added
                 // when this script re-executes on AJAX reload.
                 window.pterodactyl_option_fields = [
                     'configoptions[$egg_id]',
-                    'configoptions[$nest_id]',
                     'configoptions[$location_id]'
                 ];
                 if (!window.pterodactyl_service_events) {

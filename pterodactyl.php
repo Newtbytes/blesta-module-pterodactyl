@@ -65,7 +65,7 @@ class Pterodactyl extends Module
             foreach ($modules as $module) {
                 $rows = $this->ModuleManager->getRows($module->id);
                 foreach ($rows as $row) {
-                    $meta = (array)$row->meta;
+                    $meta = (array) $row->meta;
                     if (isset($meta['panel_url'])) {
                         $meta['host_name'] = $meta['panel_url'];
                         unset($meta['panel_url']);
@@ -180,11 +180,7 @@ class Pterodactyl extends Module
             }
 
             // Load egg
-            $pterodactyl_egg = $this->apiRequest(
-                'Nests',
-                'eggsGet',
-                ['nest_id' => $package->meta->nest_id, 'egg_id' => $package->meta->egg_id]
-            );
+            $pterodactyl_egg = $this->apiRequest('Eggs', 'get', [$package->meta->egg_id]);
 
             $errors = $this->Input->errors();
             if (!empty($errors)) {
@@ -240,11 +236,7 @@ class Pterodactyl extends Module
         $package = $this->getConfigurableOptions($vars, $package);
 
         // Load egg
-        $pterodactyl_egg = $this->apiRequest(
-            'Nests',
-            'eggsGet',
-            ['nest_id' => $package->meta->nest_id, 'egg_id' => $package->meta->egg_id]
-        );
+        $pterodactyl_egg = $this->apiRequest('Eggs', 'get', [$package->meta->egg_id]);
         if ($this->Input->errors()) {
             return;
         }
@@ -448,11 +440,7 @@ class Pterodactyl extends Module
         $package = $this->getConfigurableOptions($vars, $package);
 
         // Load egg
-        $pterodactyl_egg = $this->apiRequest(
-            'Nests',
-            'eggsGet',
-            ['nest_id' => $package->meta->nest_id, 'egg_id' => $package->meta->egg_id]
-        );
+        $pterodactyl_egg = $this->apiRequest('Eggs', 'get', [$package->meta->egg_id]);
         if ($this->Input->errors()) {
             return;
         }
@@ -873,7 +861,7 @@ class Pterodactyl extends Module
 
         // Perform actions
         if (
-            array_key_exists($get_key, (array)$get)
+            array_key_exists($get_key, (array) $get)
             && in_array($get[$get_key], ['start', 'stop', 'restart'])
             && isset($server->attributes->identifier)
         ) {
@@ -912,9 +900,20 @@ class Pterodactyl extends Module
     private function getConfigurableOptions(array $vars, $package)
     {
         $fields = [
-            'location_id', 'egg_id', 'nest_id', 'port_range',
-            'pack_id', 'memory', 'swap', 'cpu', 'disk', 'io',
-            'startup', 'image', 'databases', 'allocations', 'backups'
+            'location_id',
+            'egg_id',
+            'port_range',
+            'pack_id',
+            'memory',
+            'swap',
+            'cpu',
+            'disk',
+            'io',
+            'startup',
+            'image',
+            'databases',
+            'allocations',
+            'backups'
         ];
 
         // Override package fields, if an equivalent configurable option exists
@@ -998,7 +997,7 @@ class Pterodactyl extends Module
         $package_helper = new PterodactylPackage();
 
         // Get package field lists from API
-        $package_lists = $this->getPackageLists((object)$vars);
+        $package_lists = $this->getPackageLists((object) $vars);
 
         // Validate and gather information using the package helper
         $meta = $package_helper->add($package_lists, $vars);
@@ -1086,7 +1085,7 @@ class Pterodactyl extends Module
         );
         $module = ($module[0] ?? []);
         $this->view->set('module', (object) $module);
-        $this->view->set('vars', (object)$vars);
+        $this->view->set('vars', (object) $vars);
         return $this->view->fetch();
     }
 
@@ -1125,7 +1124,7 @@ class Pterodactyl extends Module
         );
         $module = ($module[0] ?? []);
         $this->view->set('module', (object) $module);
-        $this->view->set('vars', (object)$vars);
+        $this->view->set('vars', (object) $vars);
         return $this->view->fetch();
     }
 
@@ -1246,11 +1245,6 @@ class Pterodactyl extends Module
             $this->log('Locations.getAll', json_encode([]), 'input', true);
             $this->log('Locations.getAll', $locations_response->raw(), 'output', $locations_response->status() == 200);
 
-            // API request for nests
-            $nests_response = $api->Nests->getAll();
-            $this->log('Nests.getAll', json_encode([]), 'input', true);
-            $this->log('Nests.getAll', $nests_response->raw(), 'output', $nests_response->status() == 200);
-
             // Gather a list of locations from the API response
             if ($locations_response->status() == 200) {
                 $package_lists['locations'] = ['' => Language::_('AppController.select.please', true)];
@@ -1259,34 +1253,63 @@ class Pterodactyl extends Module
                 }
             }
 
-            // Gather a list of nests from the API response
-            if ($nests_response->status() == 200) {
-                $package_lists['nests'] = ['' => Language::_('AppController.select.please', true)];
-                foreach ($nests_response->response()->data as $nest) {
-                    $package_lists['nests'][$nest->attributes->id] = $nest->attributes->name;
+            // Gather a list of tags, keeping their slugs since eggs are filtered by slug
+            $tag_slugs = [];
+            $tags = $this->getAllPages($api, 'Tags');
+            if ($tags !== null) {
+                $package_lists['tags'] = ['' => Language::_('PterodactylPackage.package_fields.tag_id.any', true)];
+                foreach ($tags as $tag) {
+                    $package_lists['tags'][$tag->attributes->id] = $tag->attributes->name;
+                    $tag_slugs[$tag->attributes->id] = $tag->attributes->slug;
                 }
             }
 
-            // Once we select a nest, gather a list of eggs from that belong to it
-            if (!empty($vars->meta['nest_id'])) {
-                // API request for eggs
-                $eggs_response = $api->Nests->eggsGetAll($vars->meta['nest_id']);
-                if ($eggs_response->status() == 200) {
-                    $package_lists['eggs'] = ['' => Language::_('AppController.select.please', true)];
-                    foreach ($eggs_response->response()->data as $egg) {
-                        // TODO This lists egg IDs, but eggs have name, for some reason they are just not fetched by
-                        // the API. We should probably look into that.
-                        $package_lists['eggs'][$egg->attributes->id] = $egg;
-                    }
-                }
+            // Gather a list of eggs, narrowed to the selected tag if there is one. An egg can have
+            // several tags or none, so the tag is only a filter and is not needed to load an egg.
+            $egg_params = [];
+            if (!empty($vars->meta['tag_id']) && isset($tag_slugs[$vars->meta['tag_id']])) {
+                $egg_params['filter'] = ['tag' => $tag_slugs[$vars->meta['tag_id']]];
+            }
 
-                // Log request data
-                $this->log('Nests.eggsGetAll', json_encode(['nest_id' => $vars->meta['nest_id']]), 'input', true);
-                $this->log('Nests.eggsGetAll', $eggs_response->raw(), 'output', $eggs_response->status() == 200);
+            $eggs = $this->getAllPages($api, 'Eggs', $egg_params);
+            if ($eggs !== null) {
+                $package_lists['eggs'] = ['' => Language::_('AppController.select.please', true)];
+                foreach ($eggs as $egg) {
+                    $package_lists['eggs'][$egg->attributes->id] = $egg;
+                }
             }
         }
 
         return $package_lists;
+    }
+
+    /**
+     * Fetches every page of a paginated list from the application API, logging each request
+     *
+     * @param PterodactylApi $api The API to make the requests with
+     * @param string $requestor The name of the requestor class to call getAll() on
+     * @param array $params The query parameters to send with each request (optional)
+     * @return array|null The items from every page, or null if a request failed
+     */
+    private function getAllPages($api, $requestor, array $params = [])
+    {
+        $items = [];
+        $page = 1;
+        do {
+            $page_params = array_merge($params, ['per_page' => 100, 'page' => $page]);
+            $response = $api->{$requestor}->getAll($page_params);
+            $this->log($requestor . '.getAll', json_encode($page_params), 'input', true);
+            $this->log($requestor . '.getAll', $response->raw(), 'output', $response->status() == 200);
+
+            if ($response->status() != 200) {
+                return null;
+            }
+
+            $items = array_merge($items, $response->response()->data);
+            $total_pages = $response->response()->meta->pagination->total_pages ?? 1;
+        } while ($page++ < $total_pages);
+
+        return $items;
     }
 
     /**
@@ -1318,7 +1341,6 @@ class Pterodactyl extends Module
             Loader::loadHelpers($this, ['Form']);
         }
 
-        $nest_id = $package->meta->nest_id;
         $egg_id = $package->meta->egg_id;
 
         $option_groups = [];
@@ -1344,24 +1366,16 @@ class Pterodactyl extends Module
                 'name'
             );
 
-            // Load nest/egg from config option if submitted
+            // Load egg from config option if submitted
             if (isset($vars->configoptions)) {
                 $config_options = $package->configurable_options;
-                if (isset($config_options['nest_id'], $vars->configoptions[$config_options['nest_id']])) {
-                    $nest_id = $vars->configoptions[$config_options['nest_id']];
-                }
-
                 if (isset($config_options['egg_id'], $vars->configoptions[$config_options['egg_id']])) {
                     $egg_id = $vars->configoptions[$config_options['egg_id']];
                 }
             }
         }
 
-        $pterodactyl_egg = $this->apiRequest(
-            'Nests',
-            'eggsGet',
-            ['nest_id' => $nest_id, 'egg_id' => $egg_id]
-        );
+        $pterodactyl_egg = $this->apiRequest('Eggs', 'get', [$egg_id]);
 
         // Fetch the service fields
         return $service_helper->getFields($pterodactyl_egg, $package, $vars, true);
@@ -1396,7 +1410,6 @@ class Pterodactyl extends Module
             Loader::loadHelpers($this, ['Form']);
         }
 
-        $nest_id = $package->meta->nest_id;
         $egg_id = $package->meta->egg_id;
 
         $option_groups = [];
@@ -1422,24 +1435,16 @@ class Pterodactyl extends Module
                 'name'
             );
 
-            // Load nest/egg from config option if submitted
+            // Load egg from config option if submitted
             if (isset($vars->configoptions)) {
                 $config_options = $package->configurable_options;
-                if (isset($config_options['nest_id'], $vars->configoptions[$config_options['nest_id']])) {
-                    $nest_id = $vars->configoptions[$config_options['nest_id']];
-                }
-
                 if (isset($config_options['egg_id'], $vars->configoptions[$config_options['egg_id']])) {
                     $egg_id = $vars->configoptions[$config_options['egg_id']];
                 }
             }
         }
 
-        $pterodactyl_egg = $this->apiRequest(
-            'Nests',
-            'eggsGet',
-            ['nest_id' => $nest_id, 'egg_id' => $egg_id]
-        );
+        $pterodactyl_egg = $this->apiRequest('Eggs', 'get', [$egg_id]);
 
         // Fetch the service fields
         return $service_helper->getFields($pterodactyl_egg, $package, $vars);

@@ -24,7 +24,7 @@
         ],
         "package": [
             "location_id",
-            "nest_id",
+            "tag_id",
             "egg_id",
             "image"
         ],

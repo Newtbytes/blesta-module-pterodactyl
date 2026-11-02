@@ -37,12 +37,12 @@ class PterodactylPackage
      * @param array $packageLists An array of package fields lists from the API including:
      *
      *  - locations A list of location IDs
-     *  - nests A list of nest IDs
+     *  - tags A list of tag IDs
      *  - eggs A list of eggs keyed by their IDs
      * @param array $vars An array of key/value pairs used to add the package (optional) including:
      *
      *  - location_id The ID of the Location to automatically deploy servers to.
-     *  - nest_id The ID of the Nest to use for created servers.
+     *  - tag_id The ID of a tag to narrow the list of eggs to (optional)
      *  - egg_id The ID of the Egg to use for created servers.
      *  - dedicated_ip Whether to assign a dedicated ip to created servers (optional)
      *  - port_range Comma seperated port ranges to assign to created servers (optional)
@@ -126,12 +126,12 @@ class PterodactylPackage
      * @param array $packageLists An array of package fields lists from the API including:
      *
      *  - locations A list of location IDs
-     *  - nests A list of nest IDs
+     *  - tags A list of tag IDs
      *  - eggs A list of eggs keyed by their IDs
      * @param stdClass $vars A stdClass object representing a set of post fields (optional) including:
      *
      *  - location_id The ID of the Location to automatically deploy servers to.
-     *  - nest_id The ID of the Nest to use for created servers.
+     *  - tag_id The ID of a tag to narrow the list of eggs to (optional)
      *  - egg_id The ID of the Egg to use for created servers.
      *  - dedicated_ip Whether to assign a dedicated ip to created servers (optional)
      *  - port_range Comma seperated port ranges to assign to created servers (optional)
@@ -156,11 +156,11 @@ class PterodactylPackage
 
         $fields = new ModuleFields();
 
-        // Set js to refetch options when the nest or egg is changed
+        // Set js to refetch options when the tag or egg is changed
         $fields->setHtml("
             <script type=\"text/javascript\">
                 // Re-fetch module options to pull in eggs and egg variables
-                // when a nest or egg respectively is selected.
+                // when a tag or egg respectively is selected.
                 // Delegate on document and guard against rebinding so duplicate
                 // handlers aren't added when this script re-executes on AJAX reload.
                 if (!window.pterodactyl_package_events) {
@@ -204,7 +204,7 @@ class PterodactylPackage
                     };
 
                     document.addEventListener('change', function (event) {
-                        if (event.target.matches('#Pterodactyl_nest_id, #Pterodactyl_egg_id')) {
+                        if (event.target.matches('#Pterodactyl_tag_id, #Pterodactyl_egg_id')) {
                             if (typeof fetchModuleOptions === 'function') {
                                 fetchModuleOptions();
                             } else {
@@ -219,10 +219,13 @@ class PterodactylPackage
         // Set the select fields
         $selectFields = [
             'location_id' => $packageLists['locations'] ?? [],
-            'nest_id' => $packageLists['nests'] ?? [],
-            'egg_id' => isset($packageLists['eggs'])
-                ? array_combine(array_keys($packageLists['eggs']), array_keys($packageLists['eggs']))
-                : [],
+            'tag_id' => $packageLists['tags'] ?? [],
+            'egg_id' => array_map(
+                function ($egg) {
+                    return is_object($egg) ? $egg->attributes->name : $egg;
+                },
+                $packageLists['eggs'] ?? []
+            ),
         ];
         foreach ($selectFields as $selectField => $list) {
             // Create the select field label
@@ -265,8 +268,18 @@ class PterodactylPackage
 
         // Set text fields
         $textFields = [
-            'port_range', 'pack_id', 'memory', 'swap', 'cpu', 'disk',
-            'io', 'startup', 'image', 'databases', 'allocations', 'backups'
+            'port_range',
+            'pack_id',
+            'memory',
+            'swap',
+            'cpu',
+            'disk',
+            'io',
+            'startup',
+            'image',
+            'databases',
+            'allocations',
+            'backups'
         ];
         foreach ($textFields as $textField) {
             // Create the text field label
@@ -354,12 +367,12 @@ class PterodactylPackage
      * @param array $packageLists An array of package fields lists from the API including:
      *
      *  - locations A list of location IDs
-     *  - nests A list of nest IDs
+     *  - tags A list of tag IDs
      *  - eggs A list of eggs keyed by their IDs
      * @param array $vars An array of key/value data pairs
      *
      *  - location_id The ID of the Location to automatically deploy servers to.
-     *  - nest_id The ID of the Nest to use for created servers.
+     *  - tag_id The ID of a tag to narrow the list of eggs to (optional)
      *  - egg_id The ID of the Egg to use for created servers.
      *  - dedicated_ip Whether to assign a dedicated ip to created servers (optional)
      *  - port_range Comma seperated port ranges to assign to created servers (optional)
@@ -415,18 +428,18 @@ class PterodactylPackage
                     'message' => Language::_('PterodactylPackage.!error.meta[port_range].format', true)
                 ]
             ],
-            'meta[nest_id]' => [
+            'meta[tag_id]' => [
                 'format' => [
-                    'pre_format' => 'strval',
-                    'rule' => ['matches', '/^[0-9]+$/'],
-                    'message' => Language::_('PterodactylPackage.!error.meta[nest_id].format', true)
+                    'rule' => function ($tagId) {
+                        return empty($tagId) || preg_match('/^[0-9]+$/', $tagId);
+                    },
+                    'message' => Language::_('PterodactylPackage.!error.meta[tag_id].format', true)
                 ],
                 'valid' => [
-                    'rule' => [
-                        'array_key_exists',
-                        $packageLists['nests'] ?? []
-                    ],
-                    'message' => Language::_('PterodactylPackage.!error.meta[nest_id].valid', true)
+                    'rule' => function ($tagId) use ($packageLists) {
+                        return empty($tagId) || array_key_exists($tagId, $packageLists['tags'] ?? []);
+                    },
+                    'message' => Language::_('PterodactylPackage.!error.meta[tag_id].valid', true)
                 ]
             ],
             'meta[egg_id]' => [

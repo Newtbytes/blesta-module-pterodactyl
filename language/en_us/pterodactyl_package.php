@@ -7,8 +7,8 @@ $lang['Pterodactyl.back_to_manage'] = 'Back';
 $lang['PterodactylPackage.!error.meta[location_id].valid'] = 'The location ID does not match any in Pterodactyl.';
 $lang['PterodactylPackage.!error.meta[dedicated_ip].format'] = 'Whether to use a dedicated IP must be set to 1 or 0.';
 $lang['PterodactylPackage.!error.meta[port_range].format'] = 'The port range most be in the format 25565-25570,25580-25590.';
-$lang['PterodactylPackage.!error.meta[nest_id].format'] = 'The nest ID must be numeric.';
-$lang['PterodactylPackage.!error.meta[nest_id].valid'] = 'The nest does not match any in Pterodactyl.';
+$lang['PterodactylPackage.!error.meta[tag_id].format'] = 'The tag ID must be numeric.';
+$lang['PterodactylPackage.!error.meta[tag_id].valid'] = 'The tag does not match any in Pterodactyl.';
 $lang['PterodactylPackage.!error.meta[egg_id].format'] = 'The egg ID must be numeric.';
 $lang['PterodactylPackage.!error.meta[egg_id].valid'] = 'The egg does not match any in Pterodactyl.';
 $lang['PterodactylPackage.!error.meta[pack_id].format'] = 'The pack ID must be numeric.';
@@ -34,11 +34,12 @@ $lang['PterodactylPackage.package_fields.tooltip.dedicated_ip'] = 'Assign dedica
 $lang['PterodactylPackage.package_fields.port_range'] = 'Port Range';
 $lang['PterodactylPackage.package_fields.tooltip.port_range'] = 'Port ranges seperated by comma to assign to the server (Example: 25565-25570,25580-25590).';
 
-$lang['PterodactylPackage.package_fields.nest_id'] = 'Nest';
-$lang['PterodactylPackage.package_fields.tooltip.nest_id'] = 'The Nest for the server to use.';
+$lang['PterodactylPackage.package_fields.tag_id'] = 'Tag (optional)';
+$lang['PterodactylPackage.package_fields.tooltip.tag_id'] = 'Only list Eggs that have this tag. Servers are created from the Egg alone.';
+$lang['PterodactylPackage.package_fields.tag_id.any'] = '-- Any --';
 
-$lang['PterodactylPackage.package_fields.egg_id'] = 'Egg ID';
-$lang['PterodactylPackage.package_fields.tooltip.egg_id'] = 'ID of the Egg for the server to use.';
+$lang['PterodactylPackage.package_fields.egg_id'] = 'Egg';
+$lang['PterodactylPackage.package_fields.tooltip.egg_id'] = 'The Egg for the server to use.';
 
 $lang['PterodactylPackage.package_fields.pack_id'] = 'Pack ID (optional)';
 $lang['PterodactylPackage.package_fields.tooltip.pack_id'] = 'ID of the Pack to install the server with.';
